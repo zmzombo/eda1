@@ -168,13 +168,13 @@ Do we appear to have outliers?
 Now use the `table` function on Boro.
 
 ```{r boro_table}
-
+table(housing$Boro)
 ```
 
 Repeat for Boro and Class.
 
 ```{r boro_class_table}
-
+table(housing$Boro, housing$Class)
 ```
 
 
@@ -189,7 +189,7 @@ how we can actually check if that's true for all of the rows.
 
 ```{r}
 # Let's start by making a common mistake. Here's a formula to compare the two things of interest.
-# is.netinc.ok <- (Income - Expense) == NetIncome
+is.netinc.ok <- (housing$Income - housing$Expense) == housing$NetIncome
 ```
 
 
@@ -282,7 +282,7 @@ This is called *feature engineering* and is often one of the most important
 steps in the data science process of building good models.
 
 ```{r valpersqft}
-housing$ValuePerSqFt <- ????
+housing$ValuePerSqFt <- housing$Value / housing$SqFt
 ```
 
 
@@ -393,7 +393,7 @@ Another good way to quickly identify more extreme values is to
 standardize the data onto a z-scale (mean of 0, std deviation of 1.) 
 
 ```{r}
-# housing$zValuePerSqFt <- ?????
+housing$zValuePerSqFt <- (housing$ValuePerSqFt - mean(housing$ValuePerSqFt)) / sd(housing$ValuePerSqFt)
 
 
 
@@ -403,7 +403,7 @@ Find unusually large or small z-values
 
 ```{r}
 # Show rows where zValuePerSqFt is > 2 or < -2. HINT: Vector subsetting
-
+housing$zValuePerSqFt[housing$zValuePerSqFt > 2.5]
 
 ```
 
