@@ -1,0 +1,776 @@
+---
+title: "EDA - Basic plotting with base plot and ggplot2"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+  html_document:
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+---
+
+
+Basic plotting with base plot and ggplot2
+==========================================
+
+While numeric summaries are useful, often we can learn much more about our data
+by creating visualization - i.e. making graphs or plots. EDA and principles of
+graphical excellence is a big, important, and hot topic. I've included a link on
+the Moodle site to a bunch of data visualization material from my MIS 4460/5460
+class. If you haven't had that class, you might want to take a look at it.
+
+A few key principles of data visualization include:
+
+* Maximize information conveyed with least possible cognitive strain on the reader
+* Clarity counts. Make the data stand out.
+* Maximize the data to ink ratio. Avoid unecessary chart elements.
+* Don't be deceptive.
+* Use the right type of visualization for the data and the purpose
+* Learn about principles of graphical excellence (see my comment above)
+
+Plotting in R
+-------------
+
+R is known for its powerful plotting capabilities. There are several different R
+packages for plotting:
+
+* base plot - the original plotting tool for R
+* lattice plot - a more advanced plotting tool
+* ggplot2 - this is the one to master; Hadley Wickham's plotting package based on the [Grammar of Graphics](http://www.amazon.com/Grammar-Graphics-Statistics-Computing/dp/0387245448)
+
+We'll start with the base plotting capabilities of R.
+
+Base plot
+---------
+
+Get the housing `data.frame` reloaded. Either reread the CSV file or load an
+.Rdata file (or .rds file) if you saved one. Wait a second, what will happen if
+you simply reload the CSV file?
+
+A standard practice is to create an R script that handles reading in data and doing the basic
+data cleaning, transformations, and feature engineering task. In this case, our R script
+could be as simple as just the following three commands:
+
+```{r reread,eval=FALSE}
+housing <- read.table("data/housing_680.csv",
+                      header=TRUE, sep=",",
+                      stringsAsFactors=TRUE)
+
+housing$ValuePerSqFt <- housing$Value/housing$SqFt
+housing$zValuePerSqFt <-
+  with(housing,(ValuePerSqFt-mean(ValuePerSqFt))/sd(ValuePerSqFt))
+```
+
+To avoid this overhead, if we have saved an RData file, we can simply reload it.
+If you ran the commands above, first clear the environment. After loading
+`housing.rdata`, make sure all the new fields are in there. One does need to be
+careful when loading RData files as objects in them will overwrite objects of
+the same name in the global environment. A blog post which discusses this and
+some best practices can be found at
+[https://www.r-bloggers.com/safe-loading-of-rdata-files-2/](https://www.r-bloggers.com/safe-loading-of-rdata-files-2/).
+
+```{r loadrdata}
+load("data/housing.rdata")
+```
+
+### Base Histogram
+
+Histograms are the most commonly used plot for exploring the distribution of a 
+single variable. Let's create a histogram of ValuePerSqFt.
+
+In its most basic form, all we have to specifiy is the data column on which to
+base the histogram.
+
+```{r basehisto}
+hist(housing$ValuePerSqFt)
+```
+
+Then, we might want to fix up the x-axis label and graph title. The `hist()`
+function has a ton of optional arguments. We specify the ones we want to use by
+giving the name of the argument and setting it equal to the desired values. For
+example:
+
+```{r basehisto2}
+hist(housing$ValuePerSqFt, main="Distribution of Value Per Square Foot", xlab="Dollars")
+```
+There are a bunch of other options. See `help(hist)`.
+
+### Base Scatterplot
+
+Scatterplots are good for starting to explore the relationship between two variables. This will
+be the first time we'll see R's "formula notation". Here's a nice concise [tutorial on R formula notation](http://faculty.chicagobooth.edu/richard.hahn/teaching/FormulaNotation.pdf) from the University of Chicago's
+Booth School of Business. We'll use this notation quite a bit when we start doing regression and other
+statistical modeling techniques.
+
+```{r basescatter}
+plot(ValuePerSqFt ~ NetIncome, data=housing)
+plot(ValuePerSqFt ~ Units, data=housing)
+
+```
+
+Hmm, let's see what the scatters look like if we log-transform the x variables.
+
+```{r basescatter_log}
+plot(ValuePerSqFt ~ log(NetIncome), data=housing)
+plot(ValuePerSqFt ~ log(Units), data=housing)
+```
+
+Why might we want to create some plots using a log scale?
+
+- log scale useful when looking at percent change is more important than the
+actual change in value
+
+- log scale can be useful with highly skewed data which can cause a majority of 
+the values to be compressed into one small portion of your plot. Compare the
+scatters we did with NetIncome and log(NetIncome).
+
+- sometimes modelers will log transform data to try to change a non-linear
+relationship into a linear relationship (since log(ab) = log(a) + log(b)) so
+that they can use the familiar and comfortable machinery of linear regression.
+Of course, then you are faced with interpreting coefficients on a log scale.
+We'll revisit this later.
+
+### Boxplots
+
+Boxplots are another way of looking at the distribution of a variable. I love
+this plot from [r4ds](http://r4ds.had.co.nz/) illustrating the relationship
+between raw data, histograms, and boxplots.
+
+```{r, echo = FALSE, out.width = "100%"}
+knitr::include_graphics("figures/EDA-boxplot.png")
+```
+
+
+
+If you don't understand all the pieces of a boxplot, you should consult any
+number of basic statistics resources on the web.
+
+```{r basebox}
+boxplot(housing$ValuePerSqFt)
+```
+
+ggplot2
+-------
+
+While base plotting is fine, it's not great. I suggest spending time learning
+`ggplot2` instead. It's a terrific plotting package developed by [Hadley
+Wickham](http://had.co.nz/) that is based on something called the *Grammar of
+Graphics*. While a little imposing at first, once you learn a bit about the GoG
+and its use in `ggplot2`, you'll see that it provides a very elegant and
+powerful way to create awesome plots.
+
+A few basic ideas before we start:
+
+* ggplot2 has two basic methods for creating plots
+  - `qplot` command is great for quickly creating standard plots, but don't stop there.
+  - `ggplot` command exposes the full power of `ggplot2` and allows you build up, in layers, extremely nice plots
+* even if you don't dive very deeply into the Grammar of Graphics, you can still do amazing things with `ggplot2`.
+* taking some time to learn the Grammar of Graphics will pay off
+
+
+### Some more good resources for ggplot2
+
+* Chapter 1 in [*R for Data Science*](http://r4ds.had.co.nz/)
+    - this is by Hadley Wickham and he created `ggplot2`. 
+* Chapter 7 in *R for Everyone*
+* [Josef Fruehwald's tutorial](http://www.ling.upenn.edu/~joseff/avml2012/#Section_1.3)
+* [http://www.cookbook-r.com/Graphs/](http://www.cookbook-r.com/Graphs/)
+    - uses `ggplot()`
+    - very nice; lots of examples
+* [Official ggplot2 documentation](http://docs.ggplot2.org/current/)
+    - all the details
+    - the ggplot2 book is available as an eBook through the OU library
+* [Quick-R section on ggplot2](http://www.statmethods.net/advgraphs/ggplot2.html)
+    - nice intro via `qplot`
+* [Basic intoduction to ggplot2](http://www.r-bloggers.com/basic-introduction-to-ggplot2/)
+    - another nice intro via `qplot`
+
+### Basic ideas underlying ggplot2 and the GoG
+
+We'll start by summarizing the big ideas behind GoG and ggplot2 in broad terms.
+As the tutorial progresses, we'll revisit these concepts in greater detail. Much
+of this opening material is based on the book *ggplot2* by Hadley Wickham
+(available as eBook through OU library).
+
+![ggplot2 layers](./figures/ggplot-grammar-of-graphics-stack-1.png "ggplot2 layers")
+
+* The GoG was developed by Wilkinson (2005) as a way to describe fundamental features of statistical graphs.
+* Hadley Wickham (2009) built on this by focusing on how GoG based plots could be built up in **layers** and figured out how
+to implement these ideas in R.
+
+The GoG suggests that:
+
+- a statistical graphic is a mapping from **data** to **aesthetic** attributes
+(colour, shape, size, position) of **geometric objects** (points, lines, bars)
+- plots may contain statistical transformations of data (e.g. a fitted regression line)
+- plots are drawn on a specified coordinate system
+- *faceting* allows same plot to be generated for different subsets of the data
+- by combining these components, we end up with a statistical graphic
+
+Here's a first set of descriptions of these components. It will make more sense
+as we start to use `ggplot2`. These are taken directly from the ggplot2 book by
+HW.
+
+- The **data** that you want to visualise and a set of aesthetic **mappings**
+describing how variables in the data are mapped to aesthetic attributes
+that you can perceive.
+- Geometric objects, **geoms** for short, represent what you actually see on
+the plot: points, lines, polygons, etc.
+- Statistical transformations, **stats** for short, summarise data in many useful
+ways. For example, binning and counting observations to create a histogram,
+or summarising a 2d relationship with a linear model. Stats are optional,
+but very useful.
+- The **scales** map values in the data space to values in an aesthetic space,
+whether it be colour, or size, or shape. Scales draw a legend or axes, which
+provide an inverse mapping to make it possible to read the original data
+values from the graph.
+- A coordinate system, **coord** for short, describes how data coordinates are
+mapped to the plane of the graphic. It also provides axes and gridlines to
+make it possible to read the graph. We normally use a Cartesian coordinate
+system, but a number of others are available, including polar coordinates
+and map projections.
+- A **faceting** specification describes how to break up the data into subsets
+and how to display those subsets as *small multiples*. This is also known as
+conditioning or latticing/trellising.
+
+It's worth considering what the GoG does NOT do:
+
+- as analysts it's our job to figure out what type of grpahics to create and their detailed design
+- things like font sizes and colors, background colors, and other design details are handled through `ggplot2`'s theming system.
+- does not have anything to say about interactive graphs
+
+
+The RforE book gives a short, basic overview of `ggplot2`. A more in-depth, yet
+still introductory, tutorial can be found in Chapter 1 of [R for Data Science](http://r4ds.had.co.nz/), Hadley Wickham's brand new (as of 2017) book. 
+It's free online and a paperback copy is quite inexpensive. I'll refer to it as [r4ds](http://r4ds.had.co.nz/) from here on.
+
+Before we can use it, we need to load `ggplot2`.
+
+```{r lib_ggplot2}
+# Load ggplot2 library
+
+```
+
+
+### A brief look at `qplot`
+
+You can think of `qplot` as a better version of `plot`
+
+Here's a histogram of ValuePerSqFt. Notice we don't need a `y` variable.
+
+```{r qplot_histo}
+# Use qplot to create default histograms for a few other variables in `housing`.
+
+qplot(data=housing,x=NetIncome)
+```
+
+A basic scatter plot:
+
+```{r qplot_scatter}
+qplot(data=housing,x=NetIncome, y=ValuePerSqFt)
+```
+
+Now let's map Boro to color.
+
+```{r qplot_scatter_color}
+qplot(data=housing,x=NetIncome, y=ValuePerSqFt, colour=Boro)
+```
+
+However, to really take advantage of the power and flexibility of `ggplot`,
+we should learn to use the `ggplot()` function.
+
+### `ggplot2` fundamentals
+
+Consider the scatterplot we just built. Each observation, a combination of an
+x-value and a y-value is mapped to a point. Each point has the following
+*aesthetic* properties:
+
+* position in horizontal and vertical directions
+* color
+* size
+* shape
+
+In the scatter plot above, we have  the following mappings of data to
+aesthetics. Size and shape take default values based on the plot type.
+
+* x=NetIncome 
+* y=ValuePerSqFt
+* color=Boro
+
+Since both x and y are numeric in this example, a scatterplot makes sense. The
+**geom** for a scatterplot is a point and represents the geometic shape we see.
+Many basic plots only contain one geom.
+
+![Basic plot geom summary](figures/basicplots_geoms.png)
+
+For our first basic plot we'll specify the
+data, the geom, and the aesthetics that map the data to the geom.
+
+```{r gg_scatter1}
+ggplot(data = housing) + 
+  geom_point(aes(x=NetIncome, y=ValuePerSqFt, colour=Boro ))
+```
+
+See Ch 1 and Ch 22 in RforDS (by Hadley Wickham) for details on how ggplot and R
+work in terms of *scales* and *coords* (coordinate systems) to actually
+represent aesthetic values for position and color. For now, we'll just rely on
+default values.
+
+More complicated plots will contains combinations of geoms. A common combination
+would be a scatterplot with a fitted regression line overlaid. We'll come back 
+to this when we start to build up complicated plots in layers. For now, let's 
+consider a few simple univariate plots - histograms and boxplots.
+
+### A `ggplot2` graphing template
+
+We can make a general template that we can reuse.
+
+```{r gg_template, eval=FALSE}
+ggplot(data = <DATA>) + 
+  geom_point(mapping = aes(<MAPPINGS>))
+             
+```
+
+
+### `ggplot2` histograms and boxplots
+
+Let's rebuild the histogram of ValuePerSqFt.
+
+```{r gg_histo1}
+# ggplot(data = ???) +
+#   geom_histogram(mapping = aes(x=???))
+```
+
+Wow! Look at how the choice of bin width affects the resulting histogram. The
+fact that the resulting histogram is bimodal suggests that there's something
+going on in the sense that there is likely some variable that influences which
+hump of the distribution each value falls into. That's a question for later but
+is typical of the type of thing one uncovers when doing early stage EDA.
+
+The `aes` argument is the *aesthetic* and provides the mapping between the 
+data and the axes. For histogram, we just need to indicate which variable is 
+mapped to the x-axis for histogram. In other graph types we might
+have both x and y mappings required. We can even map variables to things 
+like colors, shapes, or sizes. 
+
+Let's map Boro to the fill color even though we are likely to get quite 
+a bit of overlap.
+
+```{r gg_histo_fill}
+ggplot(data = housing) + 
+  geom_histogram(mapping = aes(x=ValuePerSqFt, fill=Boro))
+```
+
+So, how does one choose an appropriate number of bins to use in a histogram? 
+Several rules of thumb existincluding Sturges' Rule and the 
+Freedman-Diaconis rule. You should look into these. 
+
+`ggplot2` gives you great control over pretty much everything in your plots. For
+example, let's change the bin width and bar colors. Learn all about colors at
+[this page of the Cookbook for R
+site](http://www.cookbook-r.com/Graphs/Colors_%28ggplot2%29/).
+
+```{r gg_histo_params}
+ggplot(housing) + 
+  geom_histogram(aes(x=ValuePerSqFt), binwidth=4, fill="#FF9999", colour="black")
+
+# Try other bin widths, fills and colors
+
+ggplot(housing) + 
+  geom_histogram(aes(x=ValuePerSqFt), binwidth=10, fill="green", colour="green")
+
+
+```
+
+Notice in the commands above I left out the `data =` and the `mapping =`. Since
+these are the first two arguments to the `ggplot` and the various `geom`
+functions, we'll often take the shortcut of simple passing the argument values
+by position and leaving off the argument name (i.e. `data` and `mapping`). If it
+helps you as you are getting started, feel free to use the more verbose form.
+
+```{r gg_histo_verbose}
+ggplot(data = housing) + 
+  geom_histogram(mapping = aes(x=ValuePerSqFt), binwidth=10, fill="green", colour="green")
+```
+
+
+One of the great features of `ggplot2` is that it makes it very easy to create
+*small multiples* or faceted plots. This is something that's no fun at all in a
+spreadsheet. For example, let's make histograms of ValuePerSqFt by Boro. Notice
+the ~Boro argument that we are passing in to the `facet_wrap` function. Think of
+it as saying we want to facet the plots "by Boro". There is also a `facet_grid`
+function. Check out the [Cookbook for R page on
+faceting](http://www.cookbook-r.com/Graphs/Facets_%28ggplot2%29/) for a nice
+intro to this topic.
+
+```{r gg_facet_histo}
+ggplot(housing) + 
+  geom_histogram(aes(x=ValuePerSqFt)) + 
+  facet_wrap(~Boro)
+
+```
+
+So, which Boro is mostly to blame for the second hump in the original histogram? 
+
+```{r gg_facet_histo_class}
+# Try faceting by Class instead of Boro
+ggplot(housing) + 
+  geom_histogram(aes(x=ValuePerSqFt)) + 
+  facet_wrap()
+
+```
+
+
+Another great feature of `ggplot2` is that you can save graph objects and then
+add new elements by using the plus symbol. For example, let's say we want to
+make a few different plots with the same `data.frame`.
+
+```{r gg_variable}
+g <- ggplot(data=housing)
+```
+
+Now, the object `g` can be used in one or more plots. Let's make histogram of
+the number of units.
+
+```{r gg_addhisto}
+g + geom_histogram(aes(x=Units))
+```
+
+... and a boxplot of ValuePerSqFt
+
+```{r gg_addbox}
+g + 
+  geom_boxplot(aes(x="label", y=ValuePerSqFt))
+```
+
+... and a set of boxplots of ValuePerSqFt by Boro
+
+```{r gg_addboxes}
+g + 
+  geom_boxplot(aes(x=Boro, y=ValuePerSqFt), fill="#FF9999", colour="black")
+```
+
+One criticism of boxplots is that the box obscures a good bit of information.
+*Violin plots* are an attempt to overcome this limitation. Instead of a box,
+curvy boxes are used where the shape is determined by the density of the data in
+each region of the box.
+
+```{r gg_violin}
+g + 
+  geom_violin(aes(x=Boro, y=ValuePerSqFt), fill="steelblue", colour="black") +
+  xlab("NYC Borough")
+```
+
+
+### ggplot2 Scatterplots
+
+Let's scatter ValuePerSqFt by log(NetIncome) but use different colors for the
+different Boro values. Notice that the colour is now INSIDE the aesthetic. We
+are mapping Boro to colour. If you've used Tableau, it's just like dragging a
+variable onto the color shelf. Notice also how you can control axis labels.
+
+```{r gg_scatter_color}
+gscatter <- g + 
+  geom_point(aes(x=log(NetIncome), y=ValuePerSqFt, colour=Boro)) + 
+  xlab("log(NetIncome)")
+
+gscatter
+```
+
+Hmm, let's facet it as well by Boro to make it a little easier to see.
+
+```{r gg_scatter_color_facet}
+# Add a facet by boro to gscatter
+
+
+```
+
+### Themes
+
+Another cool feature of `ggplot2` is the ability to use preconstructed themes in
+your plots based on commonly used styles of graphs. To do this, we need the
+`ggthemes` package. Let's see if we have it, and if not, install it.
+
+**IMPORTANT** - If we need to install a package, it's usually a good idea to
+close your project before doing the install. Then reopen the project after the
+install finishes. There's a Close Project menu item under the File menu. Then we
+can just scroll down to here and Run Previous Chunks from the Run dropdown.
+
+```{r lib_ggthemes}
+library(ggthemes)
+```
+
+Let's create a histogram and then apply different themes. Notice in these
+example how you can set the plot title using the `ggtitle()` function.
+
+```{r gg_themesamples}
+ghisto <- ggplot(data=housing) + geom_histogram(aes(x=ValuePerSqFt)) 
+
+ghisto + theme_tufte() + ggtitle("Tufte Style")
+ghisto + theme_wsj() + ggtitle("WSJ Style")
+ghisto + theme_excel() + ggtitle("Excel Style")
+ghisto + theme_economist() + ggtitle("Economist Style")
+```
+
+
+### More alternatives to histograms
+
+While histograms are widely used and quite useful, they are not without their shortcomings.
+
+* binning data loses information
+* histograms certainly are not unique - they depend on binning details
+* histograms are "ragged"; not smooth --> smoothed distributions might be better for things like simulation.
+* histograms don't handle outliers that gracefully. For example, a few extreme values can lead to 
+inappropriate binning.
+
+#### Kernel density estimators
+
+An alternative to histograms which attempt to deal with the above shortcomings
+is something called a *kernel density estimate* (KDE).
+
+KDEs are much more computationally demanding than histograms. The basic idea is:
+
+* At each data point we put a *kernel function* - a smooth strongly peaked function
+* then we add up the cumulative contribution of all these kernel functions to create a smooth curve that represents the density function of the underlying data.
+* commonly used kernel functions include:
+
+    - box
+    - Gaussian (normal)
+    - Epanechnikov (what's this????)
+    
+A nice intro to KDEs is available the [sci-kit learn
+site](http://scikit-learn.org/stable/modules/density.html). Sci-kit learn is a
+Python module that impelements a bunch of machine learning and data mining
+algorithms. We'll be using it later in the semester when we are using Python.
+Let's check out this page to get a sense of what KDEs are all about.
+
+
+```{r gg_density}
+g + geom_density(aes(x=Units))
+```
+
+What about overlaying a density plot on the histogram. Well first we need to
+change the histogram so that it plots the relative frequency on the y-axis
+instead of counts.
+
+```{r gg_hist_freq}
+# density instead of count on y-axis
+g_hist <- ggplot(housing, aes(x=ValuePerSqFt)) +
+    geom_histogram(aes(y=..density..),      
+                   binwidth=4,
+                   colour="black", fill="white")
+
+g_hist
+```
+
+Now we can just layer on the density plot.
+
+```{r gg_hist_density}
+g_histdens <- g_hist + 
+  geom_density(alpha=.2, fill="#FF6666")  # Overlay with transparent density plot
+
+g_histdens
+```
+
+Now, see if you can figure out how add a vertical line to the plot that crosses
+the x-axis at the mean. Make the line red, dashed and have a size of two. Even
+better, also add a similar, but blue line, for the median.
+
+```{r gg_hist_density_challenge}
+# g_histdens + ??????
+
+# Figure out how to do each piece first
+
+# Add vertical line at mean. Make it red and dashed.
+g_histdens + 
+  ???
+
+# Add vertical line at median. Make it blue and solid.
+g_histdens + 
+  ???
+
+# Put the pieces together and update the g_histdens object
+g_histdens <- g_histdens +
+  ??? +
+  ???
+
+g_histdens  
+```
+
+What does this suggest about the mean (and or median) as a measure of typical values in a bimodal distribution?
+
+Try to figure out how to make those lines thinner. What about a legend?
+
+#### Frequency polygon
+
+Another, simpler, alternative is something called a *frequency polygon*. Not the
+greatest name in the world. The basic idea is to eliminate the boxes in a
+histogram, replace them with a marker at what would have been the top center
+point of each histogram bin box. Connect the dots.
+
+Here's one done using the `qplot` function of `ggplot2`.
+
+```{r qplot_freqpoly}
+qplot(ValuePerSqFt, data = housing, geom = "freqpoly")
+```
+
+Here's a few things to try yourself.
+
+* experiment with different bin widths for the frequency polygon
+* figure out how your plot can show multiple frequency polygons on one  plot - one per borough each with its own line color. 
+
+### Bar charts
+
+For our factor variables, a bar chart representing the counts at each level would
+be quite appropriate. Let's see how to make this basic chart with `ggplot2`.
+
+```{r gg_bar}
+# Remember, we can reuse our g object that we set equal to ggplot(housing) earlier.
+
+g + geom_bar(aes(x=Boro))
+```
+
+If we have a factor with many (but not too many) levels, it might be better to
+create a horizontal bar chart. Let's get some practice with some R Googling. 'r
+bar chart horizontal ggplot'
+
+For Boro
+
+```{r gg_bar_boro}
+g + geom_bar(aes(x=Boro)) + coord_flip()
+```
+
+For Class
+
+```{r gg_bar_class}
+g + geom_bar(aes(x=Class)) + coord_flip()
+```
+
+Try doing a horizontal bar chart for Neighborhood. Yikes!
+
+```{r gg_bar_neighborhood}
+g + geom_bar(aes(x=Neighborhood)) + coord_flip()
+```
+
+So far, the bar charts we made were based on counts of rows by factor levels. To
+be precise, what we did is equivalent to the following:
+
+```{r}
+g + geom_bar(aes(x=Boro), stat="count")
+```
+
+The `stat="count"` argument is telling ggplot to count the number of
+rows by the levels of the x variable (Boro in this case). But what
+if you have a data frame in which you actually have y values you want to show? For example, consider the following dataframe showing
+median income by state.
+
+```{r df_income}
+# Let's create a little data frame and then view it
+mstates <- c("ME","MD","MA","MI","MN","MS","MO","MT")
+med_income <- c(47898,72419,65981,48669,58476,38718,47202,45324)
+med_income_summary <- data.frame(state=mstates,med_income)
+View(med_income_summary)
+```
+
+Now, let's try to make a bar chart showing median income by state. The following
+is going to throw an error. Read the error message closely and then we can fix
+the problem.
+
+```{r gg_badbar, eval=FALSE}
+ggplot(med_income_summary) + geom_bar(aes(x=state, y=med_income))
+```
+
+```{r gg_goodbar}
+# ggplot(med_income_summary) + 
+#   geom_bar(aes(x=state, y=med_income), stat=???)
+```
+
+Ta da!
+
+
+### Correlation and ggplot2 scatterplots
+
+Let's revisit the question of relationships between numeric variables in this
+dataset. The simple correlation coefficient gives a sense of the extent of the
+**linear** relationship between two variables. In R, correlation can be computed
+using the `cor` function.
+
+```{r correlation}
+cor(housing$NetIncome, housing$ValuePerSqFt)
+```
+
+What do you think happens if we compute the simple correlation of these two
+variables but using the log(NetIncome) instead?
+
+```{r corr_log}
+cor(log(housing$NetIncome), housing$ValuePerSqFt)
+```
+
+Hmm, how do you interpret this result?
+
+
+To get a correlation matrix, just pass in a matrix (containing only numeric
+values) to the `cor` function. In other words just pass in a subset of the
+housing data.frame corresponding to the numeric columns (3 and 5-9).
+
+```{r corr_matrix}
+cor_mat <- cor(housing[,c(3,5:9)])
+cor_mat
+```
+
+A graphical *correlation plot* can be done with the `corrplot` package.
+
+```{r lib_corrplot}
+library(corrplot)
+```
+
+```{r corrplot}
+corrplot(cor_mat, method="circle")
+```
+
+
+As expected, quite a few highly correlated variables in this data set. What
+happens if we include Year as well?
+
+```{r corr_na}
+cor(housing[,c(3,4:9)])
+```
+
+What happened and why? StackOverflow to the rescue!
+[http://stackoverflow.com/questions/19113181/removing-na-in-correlation-matrix](http://stackoverflow.com/questions/19113181/removing-na-in-correlation-matrix)
+
+```{r corr_na_fix}
+cor(housing[,c(3,4:9)],use="pairwise.complete.obs")
+```
+
+Does age seem to matter?
+
+A few comments before concluding this section.
+
+* we've barely scratched the surface of ggplot. We'll see more as part of doing statistical and machine learning models.
+* I highly encourage you to go through Ch 1 in [r4ds](http://r4ds.had.co.nz/).
+Try the Exercises at the end of each section. If you get stuck, see my completed
+version that I included in the Downloads file for this section.
+* Also, see the **ggplot_intro.Rmd** file inside the`ggplot_intro` subfolder. It
+goes through a bunch of `ggplot2` fundamentals.
+* EDA and principles of graphical excellence is a big, important, and hot topic.
+I've included a link on the Moodle site to a bunch of data visualization 
+material from my MIS 546 class. If you haven't had that class, you might 
+want to take a look at it.
+
+Finally, most uber-nerds have at least two things in common:
+
+1. They watch "Big Bang Theory" on CBS
+2. They read XKCD every M, W, F.
+
+And of course, no discussion of statistical correlation is complete unless 
+we pay homage to the important principle that "Correlation does not imply causation". Not surprisingly, XKCD weighs in on this point in typically brilliant fashion. 
+
+```{r xkcd}
+#install.packages("RXKCD")
+library(RXKCD)
+getXKCD(which="552")
+```
+
+

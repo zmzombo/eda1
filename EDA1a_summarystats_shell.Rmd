@@ -1,0 +1,483 @@
+---
+title: "EDA - Data import, initial prep, basic summary stats"
+output:
+  html_document:
+    toc: yes
+    toc_float: true
+    toc_depth: 2
+---
+
+EDA - Data import, initial prep, basic summary stats
+========================================================
+
+EDA is "exploratory data analysis". EDA
+
+* was a [term coined by the great John
+Tukey](http://en.wikipedia.org/wiki/Exploratory_data_analysis) who wrote a book
+of the same name back in 1977.
+* is a natural first step in any data analysis and modeling projects.
+* is more of a "state of mind" than a formal process. 
+* has primary goal of gaining an understanding of your data and how it might relate to the questions you hope to answer.
+
+Two very common questions that usually arise in EDA are:
+
+* What type of variation occurs in my variables?
+* What type of covariation occurs between my variables?
+
+The first is concerned with how individual variables vary while the second
+is all about how variables are related to each other. These are fundamental
+questions that arise in most statistical analyses whether they be inferential
+or predictive in nature.
+
+R provides many great tools for exploring variation and relationships. However,
+you must also understand principles of data analysis and visualization 
+to be able to wield these tools effectively. 
+
+Our first R Studio Project
+--------------------------
+
+We are going to explore a dataset related to New York City condo evaluations for
+fiscal year 2011-2012. It was obtained from the NYC Open Data initiative -
+[https://data.cityofnewyork.us/](https://data.cityofnewyork.us/). This data has
+spawned a bunch of apps through a site called [BigApps
+NYC](http://nycbigapps.com/). It's a little [Kaggle](http://www.kaggle.com/)
+like in that there are data and app dev related challenges with prize money
+attached.
+
+The dataset that we are going to explore is named `housing_680.csv` and is
+available in the Downloads for this session within `NYCcondos/data`. Let's take
+on the mindset of an investor looking to purchase high value condo properties.
+We are just beginning this endeavor, have used the NYC Open Data website to
+gather this initial data set and want to start exploring it. 
+
+By the way, the open civic data movement is alive and well. Check out [Data
+Driven Detroit](http://datadrivendetroit.org/) and what [Seattle has 
+done](https://data.seattle.gov/).
+
+Since we are initiating a new analysis project, we will use R Studio's "Project"
+feature to keep things organized. See the slides and Section 2.2.1 in RforE for
+details on creating new projects.
+
+Within the Tools menu, you'll find an item for putting the project under version
+control using Git. See Ch 2 in RforE for a short intro to this feature.
+
+A recent tutorial on [using git with RStudio is available here](https://support.rstudio.com/hc/en-us/articles/200532077-Version-Control-with-Git-and-SVN)
+
+I use [Git](http://git-scm.com/) 
+and [Github](https://github.com/) quite a bit. A few good resources on Git and GitHub:
+
+* [Software Carpentry lesson on Git] (http://swcarpentry.github.io/git-novice/)
+* [Learn Enough Git to be Dangerous] (https://www.learnenough.com/git-tutorial)
+* [http://git-scm.com/book/en/Getting-Started](http://git-scm.com/book/en/Getting-Started) 
+
+Read data file into data.frame
+------------------------------
+
+Before reading the **housing_680.csv** file into R, let's snoop it with a text
+editor. Of course, we should check the file size first to make sure we don't try
+to open a ginormous file and choke the text editor. Let's use Geany or we could
+also use the shell and use things like `head`, `tail`, and `more` (or even
+`grep`) to explore the file a bit.
+
+Before we do anything, let's make sure our working directory is correctly set. 
+
+```{r checkwd}
+
+```
+
+```{bash snoophousing}
+head -10 'data/housing_680.csv'
+
+```
+
+Now let's read **housing_680.csv** using `read.table` and set the stringsAsFactors option to FALSE.
+
+
+```{r readdata}
+housing <- read.table("data/housing_680.csv", header=TRUE, sep=",", stringsAsFactors=FALSE)
+```
+
+Check the structure of the resulting data.frame (with `str` or click the icon in the Environment tab.)
+
+```{r strhousing}
+str(housing)
+```
+
+
+* Looks the string fields came in as `chr` (expected since we told R not to
+convert to `factor`) and the numeric fields came in as integers.
+* In looking at the text fields, it looks like we do want them to be factors
+after all.
+* While we could change them using `as.factor`, we could also just reread the
+file with `stringsAsFactors` set to TRUE (or just omitted since TRUE is the
+default.)
+
+```{r rereaddata}
+housing <- read.table("data/housing_680.csv", 
+                      header=TRUE,sep=",", stringsAsFactors=TRUE)
+str(housing)
+```
+
+Look at the resulting structure and check out the Neighborhood, Class, and Boro
+columns. Let's take a closer look at this idea of Factors and their levels.
+Let's look at the first 10 rows of the Boro column. Why are the first few values
+for Boro shown by the `str` function equal to 3?
+
+```{r factors}
+housing$Boro[1:10]
+```
+
+See Section 4.4.2 in RforE for more on factors. And here's a nice [blog post on
+factors](http://www.r-bloggers.com/data-types-part-3-factors/) that not only
+explains them but shows how they end up being useful when we do things like
+regression (or other predictive) modeling. We'll be seeing this for ourselves in
+the next few weeks.
+
+How many rows and columns are in `housing`? Use R functions to answer.
+
+```{r numrowscols}
+nrow(housing)
+ncol(housing)
+```
+
+
+Quick summary of housing data.frame
+-----------------------------------
+
+One easy way to quickly get univariate summaries of all of the columns 
+in your data frame is to use the `summary` function. This is often the 
+first thing you might want to do to get a quick overview of your data. 
+Let's see what information we get and discuss the kinds of things 
+we might learn about our data from `summary`.
+
+```{r summary}
+summary(housing)
+```
+
+#### Exercise - summary function
+
+What info does it provide for factor data?
+- counts by factor level
+What info does it provide for numeric data?
+- 6 number summary
+Do we have a problem with missing data?
+- 96 recs have YearBuilt missing
+Do we appear to have outliers? 
+- Hard to tell but max much bigger than q3 for most variables
+
+Now use the `table` function on Boro.
+
+```{r boro_table}
+
+```
+
+Repeat for Boro and Class.
+
+```{r boro_class_table}
+
+```
+
+
+Checking semantics
+------------------
+
+Of course, when we downloaded this data originally, we should have checked for
+any available meta-data such as data dictionaries, data sources, and any other
+info that might guide our analysis. From scanning the data.frame, it appears
+that NetIncome is simply the difference between Income and Expenses. Let's see
+how we can actually check if that's true for all of the rows.
+
+```{r}
+# Let's start by making a common mistake. Here's a formula to compare the two things of interest.
+# is.netinc.ok <- (Income - Expense) == NetIncome
+```
+
+
+
+
+
+
+
+We can fix either the standard way or using `with`.
+
+```{r}
+is.netinc.ok <- (housing$Income - housing$Expense) == housing$NetIncome
+is.netinc.ok <- with(housing,(Income - Expense) == NetIncome)
+
+# Now how to check if TRUE for all?
+all(is.netinc.ok)
+```
+
+If they weren't all TRUE, how could we view the rows for which it's FALSE?
+Let's temporarily set row 245 of is.netinc.ok to FALSE. Run these one line
+at a time.
+
+```{r}
+is.netinc.ok[245] <- FALSE
+housing[!is.netinc.ok,]
+
+# Let's reset it
+is.netinc.ok[245] <- TRUE
+```
+
+
+Modifying data (proceed with caution and document)
+--------------------------------------------------
+
+Let's pretend that for a handful of the data records, NetIncome wasn't equal to
+Income-Expense. Let's also pretend that, in our judgement, the best thing to do
+was to update the NetIncome to Income-Expense for those cases. In the Excel
+world we'd do something like creating a new column and use the IF() function to
+return NetIncome if the comparison was true and Income-Expense if not. R also
+has a function that works just like IF() - it's the `ifelse` function (see
+p109-111 in RforE).
+
+```{r}
+housing$NetIncome <- ifelse(is.netinc.ok, housing$NetIncome, 
+                            housing$Income - housing$Expense)
+```
+
+Notice what we did above? Can we easily recover the original NetIncome values? How? 
+What is another approach we might take to make it even easier to recover these values?
+
+```{r}
+# A safer approach to data imputation
+housing$NetIncome2 <- ifelse(is.netinc.ok, housing$NetIncome, 
+                            housing$Income - housing$Expense)
+```
+
+This is one of those cases where writing R scripts really pays off. 
+By doing our data transformations and fixes like this (i.e. using R commands) we:
+
+* document EXACTLY what we've done, 
+* also make it easy to start over and redo things if needed. 
+
+Compare that to how folks commonly make all kinds of changes to 
+a data file in Excel without even documenting what they've done - especially 
+by doing things like creating auxilliary columns containing formulas and 
+then doing a Copy >> Paste Special.. >> Values to once they think they've 
+got the formulas correct.
+
+Missing data
+------------
+
+There are a number of missing Age elements. What should we do with them? In general, for missing data we might one or more of the following.  Think about the pros and cons of each.
+
+* just leave them as NA and make sure we minimize their impact on our analysis
+* delete each row of data that has one or more columns with NA values.
+* replace NA values with intelligently computed replacement values. This is
+called "imputation".
+
+For now we are just going to leave them as NA values so that we can see 
+how various analysis functions deal with NA. 
+
+Adding a key response variable
+------------------------------
+
+As we can see from the summary stats, the condos have widely varying sizes
+and values. In terms of useful information for potential investing, 
+what variables might we want to add that we can compute from the existing variables? 
+
+This is called *feature engineering* and is often one of the most important
+steps in the data science process of building good models.
+
+```{r valpersqft}
+housing$ValuePerSqFt <- ????
+```
+
+
+Computing univariate statistics for numeric data
+------------------------------------------------
+
+A common early EDA task is to compute various summary statistics for numeric
+fields. The `summary` function gave us min, max, mean, median and 1st and 3rd
+quartiles. Let's figure out how to compute all of those (and a few more) using R
+functions. Let's use the Units field.
+
+### Measures of "central tendency"
+
+```{r}
+
+# Mean and median
+mean_units <- mean(housing$Units)
+mean_units
+
+median(housing$Units)
+
+# 5% trimmed mean (use tab completion with the mean() function)
+mean(housing$Units, 0.05)
+
+# Midrange
+(min(housing$Units) + max(housing$Units))/2
+```
+
+So, what do the results of the different measures of central tendency
+suggest about the Units field?
+
+### Measures of disperson
+
+Now let's look at measures of "dispersion". What statistics are relevant?
+
+```{r}
+
+
+
+```
+
+#### Exercise - Compute and interpret coefficient of variation
+
+It can be hard to get a sense of the amount of dispersion in a dataset
+just from looking at things like variance or standard deviation. An often
+helpful, relative, measure is the *coefficient of variation* (or CV for short). 
+Of course, we really just need to start plotting the data. We'll do that soon.
+
+```{r}
+cv_units <- sd_units/mean_units
+cv_units
+```
+
+Notice what coefficient of variation is doing? 
+
+How might you explain this in basic terms?
+
+What is a frame of reference for deciding if the CV is *big*?
+
+## Upper and lower quantiles
+
+What about the "tails"? While `min` and `max` are useful, they can be rather 
+extreme. Sometimes the min and/or max values are the result of data entry errors
+or ad-hoc coding of missing values (e.g. 9999999). It's a good idea to look at 
+lower and upper quantiles (or percentiles) - these ignore very extreme values
+and give you a better sense of the practical range of your dataset.
+
+
+
+```{r}
+# 10th and 90th
+quantile(housing$Units,0.10)
+quantile(housing$Units,0.90)
+
+# 5th and 95th
+quantile(housing$Units,0.05)
+quantile(housing$Units,0.95)
+
+# 1st and 99th
+quantile(housing$Units,0.01)
+quantile(housing$Units,0.99)
+
+```
+
+Other important quantiles include the 25th (Q1), 50th (Q2), and 75th (Q3). 
+In fact, another useful measure of dispersion is the IQR (interquartile range), 
+which is $Q3-Q1$. 
+
+The IQR is used in several rules of thumb for choosing the number of bins in a histogram and Q1 and Q3 are used in boxplots. We'll see both of these soon.
+
+#### Exercise - Compute Q1, Q2, Q3 and IQR for the Units field
+
+```{r}
+# 1st quartile
+
+
+# 2nd quartile (aka median)
+
+
+# 3rd quartile
+
+
+# IQR
+
+```
+
+Another good way to quickly identify more extreme values is to 
+standardize the data onto a z-scale (mean of 0, std deviation of 1.) 
+
+```{r}
+# housing$zValuePerSqFt <- ?????
+
+
+
+```
+
+Find unusually large or small z-values
+
+```{r}
+# Show rows where zValuePerSqFt is > 2 or < -2. HINT: Vector subsetting
+
+
+```
+
+#### Exercise - the Z distribution
+
+What is the Z distribution? 
+
+What is the shape of the Z-distribution?
+
+Does the shape of ValuePerSqFt roughly match a Z-distribution?
+
+### Measures of shape
+
+One common measure of shape is "skew" which is a measure of lack of symmetry. 
+A normal distribution has a skew value of 0. Let's figure out how to compute 
+the skewness of housing$Units. 
+
+**Does R have a skew function** and, if so, what is it called? This is going to introduce you to the power and quirkiness of the R community. For example, **what is e1071**?
+
+```{r}
+# Compute the skewness of housing$Units
+# library(???)
+# ???(housing$Units)
+
+```
+
+
+Of course, skew is easier to see by looking at graphical representations of 
+data using things like histograms, kernel density plots or boxplots. 
+Other measures of shape include:
+
+* kurtosis, 
+* number of peaks (or modes), 
+* presence or absence of points of concentration, 
+* the  presence or absence of gaps. 
+
+As we begin to explor distributional plots, think about how
+different plot types can or cannot reveal such features?
+
+
+Saving .RData files
+-------------------
+
+You can save R objects into binary `RData` files (see Section 6.5 in RforE). 
+Let's do that with our housing `data.frame`. A few reasons we might want to do this:
+
+* we may have done various data cleaning work after reading raw data file
+* we added new features (columns)
+* avoids rereading raw data files
+
+```{r saverdata}
+save(housing, file="data/housing.rdata")
+```
+
+There are some cautions one must take when loading `RData` files. Can you
+think of one?
+
+In fact, if you want to save a single object and then have the ability
+to read it into R using a variable name of your choosing, you can use 
+something known as an `rds` file.
+
+```{r}
+saveRDS(housing, file="data/housing.rds")
+```
+
+Then, in some other script or Rmd file, you could reload it and give it a
+new name if you wish.
+
+```{r}
+housing2 <- readRDS(file="data/housing.rds")
+```
+
+
+That's a good start on computing summary statistics for a single variable. Hmmm,
+it would be nice to have a way to compute all this stuff for any variable of our
+choosing. Feels like we want to write our own function. Let's do it. Open the R
+script file **summarystats_4470.R**.
